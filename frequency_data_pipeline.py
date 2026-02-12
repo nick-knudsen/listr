@@ -117,7 +117,7 @@ ORDER BY c.locality_id, c.day_of_year DESC
 ;
 """)
 
-# calculate rolling average frequencies
+# calculate rolling average observations, checklists, frequency, and wilson lower bound CI 
 con.execute("""--sql
 DROP TABLE IF EXISTS rolling_avg_freq;
 CREATE TABLE rolling_avg_freq AS
@@ -134,6 +134,26 @@ WITH wrapped AS (
         day_of_year + 366 AS wrapped_day_of_year
     FROM detection_frequencies
     WHERE day_of_year <= 6
+),
+
+rolling AS (
+    SELECT
+        locality,
+        locality_id,
+        day_of_year,
+        common_name,
+        total_detections,
+        SUM(total_detections) OVER w AS k,
+        total_checklists,
+        SUM(total_checklists) OVER w AS n
+    FROM wrapped
+    WHERE 4 <= wrapped_day_of_year AND wrapped_day_of_year <= 369
+    WINDOW w AS (
+        PARTITION BY locality_id, common_name
+        ORDER BY wrapped_day_of_year
+        RANGE BETWEEN 3 PRECEDING AND 3 FOLLOWING
+    )
+    ORDER BY day_of_year
 )
 
 SELECT
@@ -141,16 +161,18 @@ SELECT
     locality_id,
     day_of_year,
     common_name,
-    total_detections,
-    total_checklists,
-    SUM(total_detections) OVER w / SUM(total_checklists) OVER w as rolling_avg_freq
-FROM wrapped
-WHERE 4 <= wrapped_day_of_year AND wrapped_day_of_year <= 369
-WINDOW w AS (
-    PARTITION BY locality_id, common_name
-    ORDER BY wrapped_day_of_year
-    RANGE BETWEEN 3 PRECEDING AND 3 FOLLOWING
-)
-ORDER BY day_of_year
+    k::INT AS rolling_detections,
+    n::INT AS rolling_checklists,
+    k::DOUBLE / n AS rolling_freq,
+    ((k::DOUBLE / n)
+        + (1.64 * 1.64) / (2 * n)
+        - 1.64 * SQRT(
+            ((k::DOUBLE / n) * (1 - (k::DOUBLE / n)) / n)
+            + ((1.64 * 1.64) / (4 * n * n))
+        )
+    )
+    /
+    (1 + (1.64 * 1.64) / n) AS wilson_lower_bound
+    FROM rolling
 ;
 """)
