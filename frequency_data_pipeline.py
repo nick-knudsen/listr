@@ -51,7 +51,7 @@ SELECT
     TRY_CAST(REGEXP_EXTRACT("GROUP IDENTIFIER", '(\\d+)$') AS BIGINT) AS group_id  
 FROM sightings_raw
 WHERE locality_type == 'H' AND
-    species_category == 'species' AND
+    (species_category == 'species' OR species_category == 'issf' OR species_category == 'form') AND
     all_species_reported IS TRUE
 ;
 """)
