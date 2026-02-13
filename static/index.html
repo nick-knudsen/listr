@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listr - Hotspot Optimizer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+    <header>
+        <h1>Listr</h1>
+        <p>Find the best birding hotspots to maximize your life birds</p>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="form-group">
+                <label>Your eBird Data</label>
+                <input type="file" id="csv-input" accept=".csv" />
+                <div id="file-status" class="file-status">Upload your MyEBirdData.csv from eBird</div>
+            </div>
+
+            <div class="form-group">
+                <label>County</label>
+                <select id="county-select">
+                    <option value="">All counties</option>
+                </select>
+            </div>
+
+            <div class="date-row">
+                <div class="form-group">
+                    <label>Start Date</label>
+                    <input type="date" id="start-date" />
+                </div>
+                <div class="form-group">
+                    <label>End Date</label>
+                    <input type="date" id="end-date" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Number of Hotspots</label>
+                <input type="number" id="k-input" value="5" min="1" max="20" />
+            </div>
+
+            <button class="primary" id="optimize-btn" disabled>Optimize</button>
+        </aside>
+
+        <main class="main" id="results">
+            <div class="empty-state">
+                <p>Upload your eBird data and select your trip parameters to get started.</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/app.js"></script>
+</body>
+</html>
