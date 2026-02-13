@@ -51,7 +51,7 @@ SELECT
     TRY_CAST(REGEXP_EXTRACT("GROUP IDENTIFIER", '(\\d+)$') AS BIGINT) AS group_id  
 FROM sightings_raw
 WHERE locality_type == 'H' AND
-    (species_category == 'species' OR species_category == 'issf' OR species_category == 'form') AND
+    (species_category == 'species' OR species_category == 'issf' OR species_category == 'form' OR species_category == 'domestic') AND
     all_species_reported IS TRUE
 ;
 """)
@@ -74,6 +74,33 @@ WHERE group_id IS NULL or row_num = 1
 ;
 """)
 
+# count number of year each species was observed in each hotspot to identify one-off vagrants
+con.execute("""--sql
+DROP TABLE IF EXISTS hotspot_vagrants;
+CREATE TABLE hotspot_vagrants AS
+SELECT
+    locality_id,
+    common_name,
+    COUNT(DISTINCT EXTRACT(YEAR FROM observation_date)) AS years_observed
+FROM sightings_clean
+GROUP BY common_name, locality_id
+;
+""")
+
+# filter out one-off vagrants from sightings
+con.execute("""--sql
+DROP TABLE IF EXISTS sightings_filtered;
+CREATE TABLE sightings_filtered AS
+SELECT
+    s.*
+FROM sightings_clean s
+JOIN hotspot_vagrants h
+    ON s.locality_id = h.locality_id
+    AND s.common_name = h.common_name
+    WHERE h.years_observed > 1
+;
+""")
+
 # group checklists and sighting counts by locality, date, and species
 con.execute("""--sql
 DROP TABLE IF EXISTS detection_frequencies;
@@ -84,7 +111,7 @@ WITH checklists AS (
         locality_id,
         DAYOFYEAR(observation_date) AS day_of_year,
         COUNT(DISTINCT sampling_id) AS total_checklists
-    FROM sightings_clean
+    FROM sightings_filtered
     GROUP BY locality, locality_id, day_of_year
 ), detections AS (
     SELECT
@@ -92,13 +119,13 @@ WITH checklists AS (
         DAYOFYEAR(observation_date) AS day_of_year,
         common_name,
         COUNT(DISTINCT sampling_id) AS total_detections
-    FROM sightings_clean
+    FROM sightings_filtered
     GROUP BY locality_id, day_of_year, common_name
 ), species AS (
     SELECT DISTINCT
         locality_id,
         common_name
-    FROM sightings_clean
+    FROM sightings_filtered
 )
 
 SELECT
